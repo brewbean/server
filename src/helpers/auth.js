@@ -42,4 +42,4 @@ export const validateCredentials = async (email, password) => {
   } catch (err) {
     throw new Error(err);
   }
-}
+} 
