@@ -1,45 +1,67 @@
 import axios from 'axios'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+import boom from '@hapi/boom'
+
+const { GRAPHQL_URL, JWT_SECRET, JWT_TOKEN_EXPIRES, HASURA_ADMIN_SECRET } = process.env;
 
 export const validateCredentials = async (email, password) => {
-  try {
-    const body = {
-      query: `
+  let barista;
+  let valid;
+
+  const body = {
+    query: `
       query($email: String) {
         barista(where: {email: {_eq: $email}}) {
           id
           email
-          first_name
-          last_name
           password
         }
       }
-    `,
-      variables: { email }
-    }
+      `,
+    variables: { email }
+  }
 
-    let { data } = await axios.post(process.env.GRAPHQL_URL, body, {
+  try {
+    let { data } = await axios.post(GRAPHQL_URL, body, {
       headers: {
-        'x-hasura-admin-secret': process.env.HASURA_ADMIN_SECRET
+        'x-hasura-admin-secret': HASURA_ADMIN_SECRET
       }
     });
-    let barista = data.data.barista[0];
 
-    if (!barista) {
-      return { valid: false, status: 404, message: "User does not exist" };
-    }
-
-    const valid = await bcrypt.compare(password, barista.password);
-    return valid
-      ? {
-        valid,
-        barista
-      } : {
-        valid,
-        status: 401,
-        message: 'Invalid credentials.'
-      }
-  } catch (err) {
-    throw new Error(err);
+    barista = data.data.barista[0];
+  } catch (e) {
+    console.error(e)
+    return { valid: false, error: boom.unauthorized("Unable to find 'user'") }
   }
-} 
+
+  if (!barista) {
+    return { found: false, error: boom.unauthorized("Unable to find 'user'") };
+  }
+
+  try {
+    valid = await bcrypt.compare(password, barista.password);
+    return valid
+      ? { valid, barista }
+      : { valid, error: boom.unauthorized("Invalid 'username' or 'password'") }
+  } catch (e) {
+    console.error(e)
+    return { valid: false, error: boom.unauthorized("Invalid 'username' or 'password'") }
+  }
+}
+
+export const generateJWT = ({ id, email }) => {
+  const tokenContent = {
+    sub: '' + id,
+    email,
+    iat: Date.now() / 1000,
+    iss: "https://brewbean-api.herokuapp.com",
+    "https://hasura.io/jwt/claims": {
+      "x-hasura-allowed-roles": ["barista"],
+      "x-hasura-default-role": "barista",
+      "x-hasura-barista-id": '' + id
+    }
+  };
+
+  return jwt.sign(tokenContent, JWT_SECRET, { expiresIn: `${JWT_TOKEN_EXPIRES}m` })
+}
