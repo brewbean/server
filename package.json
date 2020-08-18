@@ -10,7 +10,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node --harmony-top-level-await src/index.js ",
-    "dev": "nodemon -r dotenv/config --harmony-top-level-await src/index.js"
+    "dev": "nodemon -r dotenv/config --trace-warnings --harmony-top-level-await src/index.js"
   },
   "author": "",
   "license": "ISC",

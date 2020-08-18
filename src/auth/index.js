@@ -2,18 +2,19 @@ import express from 'express';
 import bcrypt from 'bcrypt'
 import axios from 'axios'
 import joi from 'joi'
+import jwt from 'jsonwebtoken'
 import boom from '@hapi/boom'
 import { v4 as uuidv4 } from 'uuid';
 import { validateCredentials, generateJWT } from '../helpers/auth.js';
 
-const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } = process.env;
+const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_SECRET, JWT_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } = process.env;
 
 const router = express.Router();
 
 router.post('/signup', async (req, res, next) => {
   let passwordHash;
 
-  const schema = Joi.object().keys({
+  const schema = joi.object().keys({
     email: joi.string().required(),
     password: joi.string().required(),
     displayName: joi.string().required(),
@@ -234,6 +235,12 @@ router.post('/refresh-token', async (req, res, next) => {
 });
 
 router.post('/logout-all', async (req, res, next) => {
+  const authHeader = req.header('authorization')
+
+  if (!authHeader) return next(boom.unauthorized("No token provided"));
+
+  const token = authHeader.split(' ')[1]; 
+
   const schema = joi.object().keys({
     email: joi.string().required()
   });
@@ -244,32 +251,41 @@ router.post('/logout-all', async (req, res, next) => {
     return next(boom.badRequest(error.details[0].message));
   }
 
-  const body = {
-    query: `
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.email !== value.email) {
+      return next(boom.unauthorized('You do not have permissions'))
+    }
+  } catch (e) {
+  return next(boom.unauthorized('Bad token'))
+}
+
+const body = {
+  query: `
       mutation delete_all_token($email: String!) {
         delete_refresh_token(where: {barista: {email: {_eq: $email}}}) {
           affected_rows
         }
       }
     `,
-    variables: {
-      email: value.email
+  variables: {
+    email: value.email
+  }
+}
+
+try {
+  await axios.post(GRAPHQL_URL, body, {
+    headers: {
+      'x-hasura-admin-secret': HASURA_ADMIN_SECRET
     }
-  }
+  });
+} catch (e) {
+  console.error(e);
+  return next(boom.badRequest("Error calling request"));
+}
 
-  try {
-    await axios.post(GRAPHQL_URL, body, {
-      headers: {
-        'x-hasura-admin-secret': HASURA_ADMIN_SECRET
-      }
-    });
-  } catch (e) {
-    console.error(e);
-    return next(boom.unauthorized("Invalid barista"));
-  }
-
-  // will send OK even if an invalid email sent (DESIRED? @James @William)
-  res.send('OK');
+// will send OK even if an invalid email sent (DESIRED? @James @William)
+res.send('OK');
 })
 
 export default router;
