@@ -6,7 +6,7 @@ import boom from '@hapi/boom'
 import { v4 as uuidv4 } from 'uuid';
 import { validateCredentials, generateJWT } from '../helpers/auth.js';
 
-const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_TOKEN_EXPIRES } = process.env;
+const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } = process.env;
 
 const router = express.Router();
 
@@ -85,10 +85,10 @@ router.post('/login', async (req, res, next) => {
 
   const { email, password } = value;
 
-  const { error, valid, barista } = await validateCredentials(email, password);
+  const { error: credentialError, valid, barista } = await validateCredentials(email, password);
 
   if (!valid) {
-    return next(error)
+    return next(credentialError)
   }
 
   const token = generateJWT(barista);
@@ -174,7 +174,7 @@ router.post('/refresh-token', async (req, res, next) => {
   }
 
   if (hasuraTokens.length === 0) {
-    return next(Boom.unauthorized("invalid refresh token"));
+    return next(boom.unauthorized("invalid refresh token"));
   }
 
   const { barista } = hasuraTokens[0];
@@ -185,11 +185,11 @@ router.post('/refresh-token', async (req, res, next) => {
   // two mutations as transaction
   const replaceTokenBody = {
     query: `
-      mutation ($oldRefreshToken: uuid!, $newRefreshToken: refresh_token_insert_input!, $baristaId: Int!) {
+      mutation ($oldRefreshToken: uuid!, $newRefreshTokenObject: refresh_token_insert_input!, $baristaId: Int!) {
         delete_refresh_token(where: {_and: [{token: {_eq: $oldRefreshToken}}, {barista_id: {_eq: $baristaId}}]}) {
           affected_rows
         }
-        insert_refresh_token_one(object: $newRefreshToken) {
+        insert_refresh_token_one(object: $newRefreshTokenObject) {
           id
         }
       }
@@ -197,7 +197,11 @@ router.post('/refresh-token', async (req, res, next) => {
     variables: {
       baristaId: barista.id,
       oldRefreshToken: refreshToken,
-      newRefreshToken,
+      newRefreshTokenObject: {
+        barista_id: barista.id,
+        token: newRefreshToken,
+        expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
+      },
     }
   }
 
@@ -209,7 +213,7 @@ router.post('/refresh-token', async (req, res, next) => {
     });
   } catch (e) {
     console.error(e);
-    return next(Boom.unauthorized("Invalid 'refreshToken' or 'baristaId'"));
+    return next(boom.unauthorized("Invalid 'refreshToken' or 'baristaId'"));
   }
 
   const token = generateJWT(barista);
@@ -229,5 +233,43 @@ router.post('/refresh-token', async (req, res, next) => {
   });
 });
 
+router.post('/logout-all', async (req, res, next) => {
+  const schema = joi.object().keys({
+    email: joi.string().required()
+  });
+
+  const { error, value } = schema.validate(req.body);
+
+  if (error) {
+    return next(boom.badRequest(error.details[0].message));
+  }
+
+  const body = {
+    query: `
+      mutation delete_all_token($email: String!) {
+        delete_refresh_token(where: {barista: {email: {_eq: $email}}}) {
+          affected_rows
+        }
+      }
+    `,
+    variables: {
+      email: value.email
+    }
+  }
+
+  try {
+    await axios.post(GRAPHQL_URL, body, {
+      headers: {
+        'x-hasura-admin-secret': HASURA_ADMIN_SECRET
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return next(boom.unauthorized("Invalid barista"));
+  }
+
+  // will send OK even if an invalid email sent (DESIRED? @James @William)
+  res.send('OK');
+})
 
 export default router;
