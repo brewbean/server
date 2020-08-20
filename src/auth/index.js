@@ -106,6 +106,7 @@ router.post('/login', async (req, res, next) => {
           created_at
           barista {
             email
+            display_name
           }
         }
       }
@@ -120,27 +121,31 @@ router.post('/login', async (req, res, next) => {
   }
 
   try {
-    await axios.post(GRAPHQL_URL, body, {
+    const { data } = await axios.post(GRAPHQL_URL, body, {
       headers: {
         'x-hasura-admin-secret': HASURA_ADMIN_SECRET
       }
+    });
+
+    const user = data.data.insert_refresh_token_one.barista;
+
+    res.cookie('refreshToken', refreshToken, {
+      maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+      httpOnly: true,
+      secure: false
+    });
+
+    res.json({
+      token,
+      tokenExpiry,
+      refreshToken,
+      email: user.email,
+      displayName: user.display_name,
     });
   } catch (e) {
     console.error(e)
     return next(boom.badImplementation("Could not update 'refresh token' for user"));
   }
-
-  res.cookie('refreshToken', refreshToken, {
-    maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-    httpOnly: true,
-    secure: false
-  });
-
-  res.json({
-    token,
-    tokenExpiry,
-    refreshToken,
-  });
 });
 
 router.post('/refresh-token', async (req, res, next) => {
@@ -239,7 +244,7 @@ router.post('/logout-all', async (req, res, next) => {
 
   if (!authHeader) return next(boom.unauthorized("No token provided"));
 
-  const token = authHeader.split(' ')[1]; 
+  const token = authHeader.split(' ')[1];
 
   const schema = joi.object().keys({
     email: joi.string().required()
@@ -257,35 +262,35 @@ router.post('/logout-all', async (req, res, next) => {
       return next(boom.unauthorized('You do not have permissions'))
     }
   } catch (e) {
-  return next(boom.unauthorized('Bad token'))
-}
+    return next(boom.unauthorized('Bad token'))
+  }
 
-const body = {
-  query: `
+  const body = {
+    query: `
       mutation delete_all_token($email: String!) {
         delete_refresh_token(where: {barista: {email: {_eq: $email}}}) {
           affected_rows
         }
       }
     `,
-  variables: {
-    email: value.email
-  }
-}
-
-try {
-  await axios.post(GRAPHQL_URL, body, {
-    headers: {
-      'x-hasura-admin-secret': HASURA_ADMIN_SECRET
+    variables: {
+      email: value.email
     }
-  });
-} catch (e) {
-  console.error(e);
-  return next(boom.badRequest("Error calling request"));
-}
+  }
 
-// will send OK even if an invalid email sent (DESIRED? @James @William)
-res.send('OK');
+  try {
+    await axios.post(GRAPHQL_URL, body, {
+      headers: {
+        'x-hasura-admin-secret': HASURA_ADMIN_SECRET
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    return next(boom.badRequest("Error calling request"));
+  }
+
+  // will send OK even if an invalid email sent (DESIRED? @James @William)
+  res.send('OK');
 })
 
 export default router;
