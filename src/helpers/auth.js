@@ -77,5 +77,5 @@ export const generateGuestJWT = () => {
       }
   };
 
-  return jwt.sign(tokenContent, JWT_SECRET, {})
+  return jwt.sign(tokenContent, JWT_SECRET)
 }

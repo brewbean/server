@@ -293,7 +293,7 @@ router.post('/logout-all', async (req, res, next) => {
   res.send('OK');
 })
 
-router.post('/guest', async (req, res, next) => {
+router.get('/guest', async (req, res, next) => {
   const token = generateGuestJWT();
   res.json({
     token
