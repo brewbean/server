@@ -5,7 +5,7 @@ import joi from 'joi'
 import jwt from 'jsonwebtoken'
 import boom from '@hapi/boom'
 import { v4 as uuidv4 } from 'uuid';
-import { validateCredentials, generateJWT } from '../helpers/auth.js';
+import { validateCredentials, generateJWT, generateGuestJWT } from '../helpers/auth.js';
 
 const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_SECRET, JWT_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } = process.env;
 
@@ -291,6 +291,13 @@ router.post('/logout-all', async (req, res, next) => {
 
   // will send OK even if an invalid email sent (DESIRED? @James @William)
   res.send('OK');
+})
+
+router.get('/guest', async (req, res, next) => {
+  const token = generateGuestJWT();
+  res.json({
+    token
+  });
 })
 
 export default router;

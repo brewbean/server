@@ -65,3 +65,17 @@ export const generateJWT = ({ id, email }) => {
 
   return jwt.sign(tokenContent, JWT_SECRET, { expiresIn: `${JWT_TOKEN_EXPIRES}m` })
 }
+
+export const generateGuestJWT = () => {
+  const tokenContent = {
+      // sub: 'guest' // is sub required?
+      iat: Date.now() / 1000,
+      iss: "https://brewbean-api.herokuapp.com",
+      "https://hasura.io/jwt/claims": {
+        "x-hasura-allowed-roles": ["guest"],
+        "x-hasura-default-role": "guest"
+      }
+  };
+
+  return jwt.sign(tokenContent, JWT_SECRET)
+}
