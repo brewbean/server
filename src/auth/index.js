@@ -239,6 +239,14 @@ router.post('/refresh-token', async (req, res, next) => {
   });
 });
 
+router.post('/logout', async (req, res, next) => {
+  res.cookie('refresh_token', "", {
+    httpOnly: true,
+    expires: new Date(0)
+  });
+  res.send('OK');
+});
+
 router.post('/logout-all', async (req, res, next) => {
   const authHeader = req.header('authorization')
 
