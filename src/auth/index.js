@@ -158,6 +158,7 @@ router.post('/refresh-token', async (req, res, next) => {
           barista {
             id
             email
+            display_name
           }
         }
       }
@@ -235,7 +236,8 @@ router.post('/refresh-token', async (req, res, next) => {
     token,
     tokenExpiry,
     refreshToken: newRefreshToken,
-    baristaId: barista.id,
+    email: barista.email,
+    displayName: barista.display_name,
   });
 });
 
