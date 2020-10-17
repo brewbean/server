@@ -15,7 +15,7 @@ router.post('/signup', async (req, res, next) => {
   let passwordHash;
 
   const schema = joi.object().keys({
-    email: joi.string().required(),
+    email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
     displayName: joi.string().required(),
   });
@@ -74,7 +74,7 @@ router.post('/signup', async (req, res, next) => {
 
 router.post('/login', async (req, res, next) => {
   const schema = joi.object().keys({
-    email: joi.string().required(),
+    email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
   });
 
@@ -158,6 +158,7 @@ router.post('/refresh-token', async (req, res, next) => {
           barista {
             id
             email
+            display_name
           }
         }
       }
@@ -235,8 +236,17 @@ router.post('/refresh-token', async (req, res, next) => {
     token,
     tokenExpiry,
     refreshToken: newRefreshToken,
-    baristaId: barista.id,
+    email: barista.email,
+    displayName: barista.display_name,
   });
+});
+
+router.post('/logout', async (req, res, next) => {
+  res.cookie('refresh_token', "", {
+    httpOnly: true,
+    expires: new Date(0)
+  });
+  res.send('OK');
 });
 
 router.post('/logout-all', async (req, res, next) => {
@@ -247,7 +257,7 @@ router.post('/logout-all', async (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   const schema = joi.object().keys({
-    email: joi.string().required()
+    email: joi.string().email().lowercase().required()
   });
 
   const { error, value } = schema.validate(req.body);
