@@ -15,7 +15,7 @@ router.post('/signup', async (req, res, next) => {
   let passwordHash;
 
   const schema = joi.object().keys({
-    email: joi.string().required(),
+    email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
     displayName: joi.string().required(),
   });
@@ -74,7 +74,7 @@ router.post('/signup', async (req, res, next) => {
 
 router.post('/login', async (req, res, next) => {
   const schema = joi.object().keys({
-    email: joi.string().required(),
+    email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
   });
 
@@ -257,7 +257,7 @@ router.post('/logout-all', async (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   const schema = joi.object().keys({
-    email: joi.string().required()
+    email: joi.string().email().lowercase().required()
   });
 
   const { error, value } = schema.validate(req.body);
