@@ -150,6 +150,10 @@ router.post('/login', async (req, res, next) => {
 
 router.post('/refresh-token', async (req, res, next) => {
   const refreshToken = req.cookies['refreshToken'];
+  
+  if (refreshToken === null || refreshToken === undefined) {
+    return next(boom.unauthorized("Invalid refresh token request"));
+  }
 
   const body = {
     query: `
