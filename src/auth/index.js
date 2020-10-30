@@ -139,6 +139,7 @@ router.post('/login', async (req, res, next) => {
       token,
       tokenExpiry,
       refreshToken,
+      id: user.id,
       email: user.email,
       displayName: user.display_name,
     });
@@ -240,6 +241,7 @@ router.post('/refresh-token', async (req, res, next) => {
     token,
     tokenExpiry,
     refreshToken: newRefreshToken,
+    id: barista.id, 
     email: barista.email,
     displayName: barista.display_name,
   });
