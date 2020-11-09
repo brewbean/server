@@ -127,7 +127,7 @@ router.post('/login', async (req, res, next) => {
       }
     });
 
-    const user = data.data.insert_refresh_token_one.barista;
+    const barista = data.data.insert_refresh_token_one.barista;
 
     res.cookie('refreshToken', refreshToken, {
       maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
@@ -139,9 +139,9 @@ router.post('/login', async (req, res, next) => {
       token,
       tokenExpiry,
       refreshToken,
-      id: user.id,
-      email: user.email,
-      displayName: user.display_name,
+      id: barista.id,
+      email: barista.email,
+      displayName: barista.display_name,
     });
   } catch (e) {
     console.error(e)
