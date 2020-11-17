@@ -28,18 +28,12 @@ export const validateCredentials = async (email, password) => {
         'x-hasura-admin-secret': HASURA_ADMIN_SECRET
       }
     });
-
     barista = data.data.barista[0];
-  } catch (e) {
-    console.error(e)
-    return { valid: false, error: boom.unauthorized("Unable to find 'user'") }
-  }
 
-  if (!barista) {
-    return { found: false, error: boom.unauthorized("Unable to find 'user'") };
-  }
+    if (!barista) {
+      return { valid: false, error: boom.unauthorized("Invalid 'username' or 'password'") };
+    }
 
-  try {
     valid = await bcrypt.compare(password, barista.password);
     return valid
       ? { valid, barista }
