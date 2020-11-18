@@ -105,8 +105,10 @@ router.post('/login', async (req, res, next) => {
           expires_at
           created_at
           barista {
+            id
             email
             display_name
+            avatar
           }
         }
       }
@@ -127,7 +129,7 @@ router.post('/login', async (req, res, next) => {
       }
     });
 
-    const barista = data.data.insert_refresh_token_one.barista;
+    const user = data.data.insert_refresh_token_one.barista;
 
     res.cookie('refreshToken', refreshToken, {
       maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
@@ -139,9 +141,10 @@ router.post('/login', async (req, res, next) => {
       token,
       tokenExpiry,
       refreshToken,
-      id: barista.id,
-      email: barista.email,
-      displayName: barista.display_name,
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      avatar: user.avatar,
     });
   } catch (e) {
     console.error(e)
@@ -164,6 +167,7 @@ router.post('/refresh-token', async (req, res, next) => {
             id
             email
             display_name
+            avatar
           }
         }
       }
@@ -244,6 +248,7 @@ router.post('/refresh-token', async (req, res, next) => {
     id: barista.id, 
     email: barista.email,
     displayName: barista.display_name,
+    avatar: barista.avatar,
   });
 });
 
