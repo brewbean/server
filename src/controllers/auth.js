@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken'
 import boom from '@hapi/boom'
 import { v4 as uuidv4 } from 'uuid';
 import { validateCredentials, generateJWT, generateGuestJWT, getDuplicateError } from '../helpers/auth.js';
-import { DELETE_ALL_REFRESH_TOKENS, INSERT_BARISTA, INSERT_REFRESH_TOKEN, REPLACE_REFRESH_TOKEN } from '../graphql/mutations.js';
+import { DELETE_ALL_REFRESH_TOKENS, DELETE_REFRESH_TOKEN, INSERT_BARISTA, INSERT_REFRESH_TOKEN, REPLACE_REFRESH_TOKEN } from '../graphql/mutations.js';
 import { GET_REFRESH_TOKEN_BY_ID } from '../graphql/queries.js';
 
 const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_SECRET, JWT_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } = process.env;
@@ -215,11 +215,28 @@ export const refreshTokenController = async (req, res, next) => {
 
 // should delete refresh token
 export const logoutController = async (req, res, next) => {
-  res.cookie('refresh_token', "", {
-    httpOnly: true,
-    expires: new Date(0)
-  });
-  res.send('OK');
+  const refreshToken = req.cookies['refreshToken'];
+
+  if (refreshToken === null || refreshToken === undefined) {
+    return next(boom.unauthorized("Logout request missing refresh token cookie"));
+  }
+  try {
+    await axios.post(GRAPHQL_URL,
+      {
+        query: DELETE_REFRESH_TOKEN,
+        variables: { refreshToken },
+      },
+      HASURA_ADMIN_HEADERS
+    );
+
+    res.cookie('refresh_token', "", {
+      httpOnly: true,
+      expires: new Date(0)
+    });
+    res.send('OK');
+  } catch (e) {
+    return next(boom.badRequest("Error logging out"));
+  }
 }
 
 export const logoutAllController = async (req, res, next) => {

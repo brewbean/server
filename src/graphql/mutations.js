@@ -51,8 +51,16 @@ export const REPLACE_REFRESH_TOKEN = `
 `;
 
 export const DELETE_ALL_REFRESH_TOKENS = `
-  mutation delete_all_token($email: String!) {
+  mutation ($email: String!) {
     delete_refresh_token(where: {barista: {email: {_eq: $email}}}) {
+      affected_rows
+    }
+  }
+`;
+
+export const DELETE_REFRESH_TOKEN = `
+  mutation ($refreshToken:uuid!) {
+    delete_refresh_token(where: {token: {_eq: $refreshToken}}) {
       affected_rows
     }
   }
