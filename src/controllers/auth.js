@@ -55,8 +55,6 @@ export const signupController = async (req, res, next) => {
     }
 
     const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-    
-    console.log('DATA', data);
 
     if (data.errors) {
       const duplicateErrors = data.errors.filter(({ extensions: { code } }) => code === 'constraint-violation');
