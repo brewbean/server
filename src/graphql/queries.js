@@ -6,7 +6,19 @@ export const GET_REFRESH_TOKEN_BY_ID = `
         email
         display_name
         avatar
+        verified
       }
+    }
+  }
+`;
+
+// used just for verifying password
+export const GET_BARISTA_BY_EMAIL = `
+  query($email: String) {
+    barista(where: {email: {_eq: $email}}) {
+      id
+      email
+      password
     }
   }
 `;
