@@ -4,7 +4,7 @@ import morgan from 'morgan'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 
-import auth from './auth/index.js'
+import auth from './routes/auth.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000

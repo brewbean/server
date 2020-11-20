@@ -3,45 +3,38 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import boom from '@hapi/boom'
 
+import { GET_BARISTA_BY_EMAIL } from '../graphql/queries.js';
+
 const { GRAPHQL_URL, JWT_SECRET, JWT_TOKEN_EXPIRES, HASURA_ADMIN_SECRET } = process.env;
+
+const HASURA_ADMIN_HEADERS = {
+  headers: {
+    'x-hasura-admin-secret': HASURA_ADMIN_SECRET
+  }
+};
 
 export const validateCredentials = async (email, password) => {
   let barista;
   let valid;
 
   const body = {
-    query: `
-      query($email: String) {
-        barista(where: {email: {_eq: $email}}) {
-          id
-          email
-          password
-        }
-      }
-      `,
+    query: GET_BARISTA_BY_EMAIL,
     variables: { email }
   }
 
-  try {
-    let { data } = await axios.post(GRAPHQL_URL, body, {
-      headers: {
-        'x-hasura-admin-secret': HASURA_ADMIN_SECRET
-      }
-    });
-    barista = data.data.barista[0];
+  const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
+  barista = data.data.barista[0];
 
-    if (!barista) {
-      return { valid: false, error: boom.unauthorized("Invalid 'username' or 'password'") };
-    }
-
-    valid = await bcrypt.compare(password, barista.password);
-    return valid
-      ? { valid, barista }
-      : { valid, error: boom.unauthorized("Invalid 'username' or 'password'") }
-  } catch (e) {
-    console.error(e)
-    return { valid: false, error: boom.unauthorized("Invalid 'username' or 'password'") }
+  // graphql query will not error if no valid user -> empty array
+  if (!barista) {
+    return { valid: false, error: boom.unauthorized("Invalid 'username' or 'password'") };
   }
+
+  valid = await bcrypt.compare(password, barista.password);
+  return valid
+    ? { valid, barista }
+    : { valid, error: boom.unauthorized("Invalid 'username' or 'password'") }
+
 }
 
 export const generateJWT = ({ id, email }) => {
@@ -72,4 +65,14 @@ export const generateGuestJWT = () => {
   };
 
   return jwt.sign(tokenContent, JWT_SECRET)
+}
+
+export const getDuplicateError = errors => {
+  const { message } = errors[0]; // should only have one constraint error at a time
+  if (message.includes('barista_email_key')) {
+    return boom.badRequest('Email already exists');
+  }
+  if (message.includes('barista_display_name_key')) {
+    return boom.badRequest('Display name already exists');
+  }
 }
