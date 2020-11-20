@@ -4,11 +4,20 @@ export const INSERT_BARISTA = `
       id
       email
       display_name
+      avatar
+      verified
       created_on
+      refetch_tokens {
+        token
+        id
+        expires_at
+        barista_id
+      }
     }
   }
 `;
 
+// barista data sent with login comes from here
 export const INSERT_REFRESH_TOKEN = `
   mutation ($object: refresh_token_insert_input!) {
     insert_refresh_token_one(object: $object) {
@@ -21,6 +30,7 @@ export const INSERT_REFRESH_TOKEN = `
         email
         display_name
         avatar
+        verified
       }
     }
   }
@@ -44,6 +54,6 @@ export const DELETE_ALL_REFRESH_TOKENS = `
   mutation delete_all_token($email: String!) {
     delete_refresh_token(where: {barista: {email: {_eq: $email}}}) {
       affected_rows
-    }G
+    }
   }
 `;
