@@ -4,7 +4,7 @@ import joi from 'joi'
 import jwt from 'jsonwebtoken'
 import boom from '@hapi/boom'
 import { v4 as uuidv4 } from 'uuid';
-import { validateCredentials, generateJWT, generateGuestJWT } from '../helpers/auth.js';
+import { validateCredentials, generateJWT, generateGuestJWT, getDuplicateError } from '../helpers/auth.js';
 import { DELETE_ALL_REFRESH_TOKENS, INSERT_BARISTA, INSERT_REFRESH_TOKEN, REPLACE_REFRESH_TOKEN } from '../graphql/mutations.js';
 import { GET_REFRESH_TOKEN_BY_ID } from '../graphql/queries.js';
 
@@ -17,8 +17,6 @@ const HASURA_ADMIN_HEADERS = {
 };
 
 export const signupController = async (req, res, next) => {
-  let passwordHash;
-
   const schema = joi.object().keys({
     email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
@@ -34,34 +32,62 @@ export const signupController = async (req, res, next) => {
   const { email, password, displayName } = value;
 
   try {
-    passwordHash = await bcrypt.hash(password, 10);
-  } catch (e) {
-    console.error(e);
-    return next(boom.badImplementation("Unable to generate 'password hash'"));
-  }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const refreshToken = uuidv4();
 
-  const body = {
-    query: INSERT_BARISTA,
-    variables: {
-      object: {
-        email,
-        display_name: displayName,
-        password: passwordHash,
+    const body = {
+      query: INSERT_BARISTA,
+      variables: {
+        object: {
+          email,
+          display_name: displayName,
+          password: passwordHash,
+          refetch_tokens: {
+            data: [
+              {
+                token: refreshToken,
+                expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)),
+              }
+            ]
+          }
+        }
       }
     }
-  }
 
-  try {
-    await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-  } catch (e) {
-    let isDuplicateError = e.response.errors.filter(({ extensions: { code } }) => code === 'constraint-violation').length > 0
-    if (isDuplicateError) {
-      return next(boom.badRequest('User already exist'));
+    const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
+    
+    console.log('DATA', data);
+
+    if (data.errors) {
+      const duplicateErrors = data.errors.filter(({ extensions: { code } }) => code === 'constraint-violation');
+      const isDuplicateError = duplicateErrors.length > 0;
+      if (isDuplicateError) {
+        return next(getDuplicateError(duplicateErrors));
+      }
     }
+
+    const barista = data.data.insert_barista_one;
+    const token = generateJWT(barista); // create token + barista data
+    const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
+
+    res.cookie('refreshToken', refreshToken, {
+      maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+      httpOnly: true,
+      secure: false
+    });
+    res.json({
+      token,
+      tokenExpiry,
+      refreshToken,
+      id: barista.id,
+      email: barista.email,
+      displayName: barista.display_name,
+      avatar: barista.avatar,
+      verified: barista.verified,
+    });
+  } catch (e) {
     return next(boom.badImplementation('Unable to create user.'));
   }
-
-  res.send('OK');
 };
 
 export const loginController = async (req, res, next) => {
@@ -78,28 +104,28 @@ export const loginController = async (req, res, next) => {
 
   const { email, password } = value;
 
-  const { error: credentialError, valid, barista } = await validateCredentials(email, password);
+  try {
+    const { error: credentialError, valid, barista } = await validateCredentials(email, password);
 
-  if (!valid) {
-    return next(credentialError)
-  }
+    if (!valid) {
+      return next(credentialError)
+    }
 
-  const token = generateJWT(barista);
-  const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
-  const refreshToken = uuidv4();
+    const token = generateJWT(barista);
+    const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
+    const refreshToken = uuidv4();
 
-  const body = {
-    query: INSERT_REFRESH_TOKEN,
-    variables: {
-      object: {
-        barista_id: barista.id,
-        token: refreshToken,
-        expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
+    const body = {
+      query: INSERT_REFRESH_TOKEN,
+      variables: {
+        object: {
+          barista_id: barista.id,
+          token: refreshToken,
+          expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
+        }
       }
     }
-  }
 
-  try {
     const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
 
     const user = data.data.insert_refresh_token_one.barista;
@@ -118,9 +144,9 @@ export const loginController = async (req, res, next) => {
       email: user.email,
       displayName: user.display_name,
       avatar: user.avatar,
+      verified: user.verified,
     });
   } catch (e) {
-    console.error(e)
     return next(boom.badImplementation("Could not update 'refresh token' for user"));
   }
 };
@@ -132,8 +158,6 @@ export const refreshTokenController = async (req, res, next) => {
     return next(boom.unauthorized("Invalid refresh token request"));
   }
 
-  let hasuraTokens;
-
   try {
     const { data } = await axios.post(GRAPHQL_URL,
       {
@@ -143,59 +167,55 @@ export const refreshTokenController = async (req, res, next) => {
       HASURA_ADMIN_HEADERS
     );
 
-    hasuraTokens = data.data.refresh_token;
-  } catch (e) {
-    console.error(e);
-    return next(boom.unauthorized("Invalid refresh token request"));
-  }
+    const hasuraTokens = data.data.refresh_token;
 
-  if (hasuraTokens.length === 0) {
-    return next(boom.unauthorized("invalid refresh token"));
-  }
-
-  const { barista } = hasuraTokens[0];
-  const newRefreshToken = uuidv4();
-
-  const body = {
-    query: REPLACE_REFRESH_TOKEN,
-    variables: {
-      baristaId: barista.id,
-      oldRefreshToken: refreshToken,
-      newRefreshTokenObject: {
-        barista_id: barista.id,
-        token: newRefreshToken,
-        expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
-      },
+    if (hasuraTokens.length === 0) {
+      return next(boom.unauthorized("invalid refresh token"));
     }
-  }
 
-  try {
+    const { barista } = hasuraTokens[0];
+    const newRefreshToken = uuidv4();
+
+    const body = {
+      query: REPLACE_REFRESH_TOKEN,
+      variables: {
+        baristaId: barista.id,
+        oldRefreshToken: refreshToken,
+        newRefreshTokenObject: {
+          barista_id: barista.id,
+          token: newRefreshToken,
+          expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
+        },
+      }
+    }
     await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
+
+    const token = generateJWT(barista);
+    const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
+
+    res.cookie('refreshToken', newRefreshToken, {
+      maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+      httpOnly: true,
+      secure: false
+    });
+
+    res.json({
+      token,
+      tokenExpiry,
+      refreshToken: newRefreshToken,
+      id: barista.id,
+      email: barista.email,
+      displayName: barista.display_name,
+      avatar: barista.avatar,
+      verified: barista.verified,
+    });
+
   } catch (e) {
-    console.error(e);
     return next(boom.unauthorized("Invalid 'refreshToken' or 'baristaId'"));
   }
-
-  const token = generateJWT(barista);
-  const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
-
-  res.cookie('refreshToken', newRefreshToken, {
-    maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-    httpOnly: true,
-    secure: false
-  });
-
-  res.json({
-    token,
-    tokenExpiry,
-    refreshToken: newRefreshToken,
-    id: barista.id,
-    email: barista.email,
-    displayName: barista.display_name,
-    avatar: barista.avatar,
-  });
 }
 
+// should delete refresh token
 export const logoutController = async (req, res, next) => {
   res.cookie('refresh_token', "", {
     httpOnly: true,
@@ -240,7 +260,6 @@ export const logoutAllController = async (req, res, next) => {
   try {
     await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
   } catch (e) {
-    console.error(e);
     return next(boom.badRequest("Error calling request"));
   }
 
