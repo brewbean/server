@@ -40,8 +40,8 @@ export const INSERT_REFRESH_TOKEN = `
 // new refresh_token in the database
 // two mutations as transaction
 export const REPLACE_REFRESH_TOKEN = `
-  mutation ($oldRefreshToken: uuid!, $newRefreshTokenObject: refresh_token_insert_input!, $baristaId: Int!) {
-    delete_refresh_token(where: {_and: [{token: {_eq: $oldRefreshToken}}, {barista_id: {_eq: $baristaId}}]}) {
+  mutation ($oldRefreshToken: uuid!, $newRefreshTokenObject: refresh_token_insert_input!) {
+    delete_refresh_token(where: {token: {_eq: $oldRefreshToken}}) {
       affected_rows
     }
     insert_refresh_token_one(object: $newRefreshTokenObject) {

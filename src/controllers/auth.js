@@ -151,6 +151,7 @@ export const loginController = async (req, res, next) => {
 
 export const refreshTokenController = async (req, res, next) => {
   const refreshToken = req.cookies['refreshToken'];
+  console.log("R_TOKEN ->", refreshToken);
 
   if (refreshToken === null || refreshToken === undefined) {
     return next(boom.unauthorized("Invalid refresh token request"));
@@ -177,7 +178,6 @@ export const refreshTokenController = async (req, res, next) => {
     const body = {
       query: REPLACE_REFRESH_TOKEN,
       variables: {
-        baristaId: barista.id,
         oldRefreshToken: refreshToken,
         newRefreshTokenObject: {
           barista_id: barista.id,
@@ -218,7 +218,11 @@ export const logoutController = async (req, res, next) => {
   const refreshToken = req.cookies['refreshToken'];
 
   if (refreshToken === null || refreshToken === undefined) {
-    return next(boom.unauthorized("Logout request missing refresh token cookie"));
+    res.cookie('refresh_token', "", {
+      httpOnly: true,
+      expires: new Date(0)
+    });
+    res.send('OK');
   }
   try {
     await axios.post(GRAPHQL_URL,
