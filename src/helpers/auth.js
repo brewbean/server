@@ -39,15 +39,15 @@ export const validateCredentials = async (email, password) => {
 
 }
 
-export const generateJWT = ({ id, email }) => {
+export const generateJWT = ({ id, email, verified }) => {
   const tokenContent = {
     sub: '' + id,
     email,
     iat: Date.now() / 1000,
     iss: "https://brewbean-api.herokuapp.com",
     "https://hasura.io/jwt/claims": {
-      "x-hasura-allowed-roles": ["barista", "guest"],
-      "x-hasura-default-role": "barista",
+      "x-hasura-allowed-roles": ["barista", "guest", "unverified"],
+      "x-hasura-default-role": verified ? "barista" : "unverified",
       "x-hasura-barista-id": '' + id
     }
   };

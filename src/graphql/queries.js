@@ -30,6 +30,7 @@ export const GET_BARISTA_CRED_BY_EMAIL = gql`
       id
       email
       password
+      verified
     }
   }
 `;

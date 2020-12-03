@@ -5,6 +5,7 @@ export const INSERT_BARISTA = gql`
     insert_barista_one(object: $object) {
       id
       email
+      verified
       refetch_tokens {
         token
         expires_at
@@ -34,6 +35,7 @@ export const REPLACE_REFRESH_TOKEN = gql`
       barista {
         id
         email
+        verified
       }
     }
   }
