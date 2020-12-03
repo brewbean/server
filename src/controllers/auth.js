@@ -3,10 +3,11 @@ import axios from 'axios'
 import joi from 'joi'
 import jwt from 'jsonwebtoken'
 import boom from '@hapi/boom'
+import graphql from 'graphql';
 import { v4 as uuidv4 } from 'uuid';
 import { validateCredentials, generateJWT, generateGuestJWT, getDuplicateError } from '../helpers/auth.js';
 import { DELETE_ALL_REFRESH_TOKENS, DELETE_REFRESH_TOKEN, INSERT_BARISTA, INSERT_REFRESH_TOKEN, REPLACE_REFRESH_TOKEN } from '../graphql/mutations.js';
-import { GET_REFRESH_TOKEN_BY_ID } from '../graphql/queries.js';
+const { print } = graphql;
 
 const { GRAPHQL_URL, HASURA_ADMIN_SECRET, JWT_SECRET, JWT_TOKEN_EXPIRES, REFRESH_TOKEN_EXPIRES } = process.env;
 
@@ -36,7 +37,7 @@ export const signupController = async (req, res, next) => {
     const refreshToken = uuidv4();
 
     const body = {
-      query: INSERT_BARISTA,
+      query: print(INSERT_BARISTA),
       variables: {
         object: {
           email,
@@ -77,11 +78,6 @@ export const signupController = async (req, res, next) => {
       token,
       tokenExpiry,
       refreshToken,
-      id: barista.id,
-      email: barista.email,
-      displayName: barista.display_name,
-      avatar: barista.avatar,
-      verified: barista.verified,
     });
   } catch (e) {
     return next(boom.badImplementation('Unable to create user.'));
@@ -114,7 +110,7 @@ export const loginController = async (req, res, next) => {
     const refreshToken = uuidv4();
 
     const body = {
-      query: INSERT_REFRESH_TOKEN,
+      query: print(INSERT_REFRESH_TOKEN),
       variables: {
         object: {
           barista_id: barista.id,
@@ -124,9 +120,7 @@ export const loginController = async (req, res, next) => {
       }
     }
 
-    const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-
-    const user = data.data.insert_refresh_token_one.barista;
+    await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
 
     res.cookie('refreshToken', refreshToken, {
       maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
@@ -138,11 +132,6 @@ export const loginController = async (req, res, next) => {
       token,
       tokenExpiry,
       refreshToken,
-      id: user.id,
-      email: user.email,
-      displayName: user.display_name,
-      avatar: user.avatar,
-      verified: user.verified,
     });
   } catch (e) {
     return next(boom.badImplementation("Could not update 'refresh token' for user"));
@@ -151,42 +140,30 @@ export const loginController = async (req, res, next) => {
 
 export const refreshTokenController = async (req, res, next) => {
   const refreshToken = req.cookies['refreshToken'];
-  console.log("R_TOKEN ->", refreshToken);
 
-  if (refreshToken === null || refreshToken === undefined) {
+  if (!refreshToken) {
     return next(boom.unauthorized("Invalid refresh token request"));
   }
 
   try {
-    const { data } = await axios.post(GRAPHQL_URL,
-      {
-        query: GET_REFRESH_TOKEN_BY_ID,
-        variables: { refreshToken }
-      },
-      HASURA_ADMIN_HEADERS
-    );
-
-    const hasuraTokens = data.data.refresh_token;
-
-    if (hasuraTokens.length === 0) {
-      return next(boom.unauthorized("invalid refresh token"));
-    }
-
-    const { barista } = hasuraTokens[0];
     const newRefreshToken = uuidv4();
 
     const body = {
-      query: REPLACE_REFRESH_TOKEN,
+      query: print(REPLACE_REFRESH_TOKEN),
       variables: {
         oldRefreshToken: refreshToken,
         newRefreshTokenObject: {
-          barista_id: barista.id,
           token: newRefreshToken,
           expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
         },
       }
     }
-    await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
+    const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
+    const barista = data.data.update_refresh_token_by_pk?.barista;
+
+    if (!barista) {
+      return next(boom.unauthorized("invalid refresh token"));
+    }
 
     const token = generateJWT(barista);
     const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
@@ -201,11 +178,6 @@ export const refreshTokenController = async (req, res, next) => {
       token,
       tokenExpiry,
       refreshToken: newRefreshToken,
-      id: barista.id,
-      email: barista.email,
-      displayName: barista.display_name,
-      avatar: barista.avatar,
-      verified: barista.verified,
     });
 
   } catch (e) {
@@ -217,30 +189,25 @@ export const refreshTokenController = async (req, res, next) => {
 export const logoutController = async (req, res, next) => {
   const refreshToken = req.cookies['refreshToken'];
 
-  if (refreshToken === null || refreshToken === undefined) {
-    res.cookie('refresh_token', "", {
-      httpOnly: true,
-      expires: new Date(0)
-    });
-    res.send('OK');
+  if (refreshToken) {
+    try {
+      await axios.post(GRAPHQL_URL,
+        {
+          query: print(DELETE_REFRESH_TOKEN),
+          variables: { refreshToken },
+        },
+        HASURA_ADMIN_HEADERS
+      );
+    } catch (e) {
+      return next(boom.badRequest("Error logging out"));
+    }
   }
-  try {
-    await axios.post(GRAPHQL_URL,
-      {
-        query: DELETE_REFRESH_TOKEN,
-        variables: { refreshToken },
-      },
-      HASURA_ADMIN_HEADERS
-    );
 
-    res.cookie('refresh_token', "", {
-      httpOnly: true,
-      expires: new Date(0)
-    });
-    res.send('OK');
-  } catch (e) {
-    return next(boom.badRequest("Error logging out"));
-  }
+  res.cookie('refresh_token', "", {
+    httpOnly: true,
+    expires: new Date(0)
+  });
+  res.send('OK');
 }
 
 export const logoutAllController = async (req, res, next) => {
@@ -270,7 +237,7 @@ export const logoutAllController = async (req, res, next) => {
   }
 
   const body = {
-    query: DELETE_ALL_REFRESH_TOKENS,
+    query: print(DELETE_ALL_REFRESH_TOKENS),
     variables: {
       email: value.email
     }
@@ -286,6 +253,7 @@ export const logoutAllController = async (req, res, next) => {
   res.send('OK');
 };
 
+// DEPRECATED
 export const guestController = async (req, res, next) => {
   const token = generateGuestJWT();
   res.json({
