@@ -35,6 +35,7 @@ export const signupController = async (req, res, next) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const refreshToken = uuidv4();
+    const refreshTokenExpiry = new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)).toISOString();
 
     const body = {
       query: print(INSERT_BARISTA),
@@ -43,11 +44,11 @@ export const signupController = async (req, res, next) => {
           email,
           display_name: displayName,
           password: passwordHash,
-          refetch_tokens: {
+          refresh_tokens: {
             data: [
               {
                 token: refreshToken,
-                expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)),
+                expires_at: refreshTokenExpiry,
               }
             ]
           }
@@ -56,7 +57,7 @@ export const signupController = async (req, res, next) => {
     }
 
     const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-
+    
     if (data.errors) {
       const duplicateErrors = data.errors.filter(({ extensions: { code } }) => code === 'constraint-violation');
       const isDuplicateError = duplicateErrors.length > 0;
@@ -108,14 +109,15 @@ export const loginController = async (req, res, next) => {
     const token = generateJWT(barista);
     const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
     const refreshToken = uuidv4();
-
+    const refreshTokenExpiry = new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)).toISOString();
+    
     const body = {
       query: print(INSERT_REFRESH_TOKEN),
       variables: {
         object: {
           barista_id: barista.id,
           token: refreshToken,
-          expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
+          expires_at: refreshTokenExpiry, // convert from minute to milliseconds
         }
       }
     }
@@ -147,6 +149,7 @@ export const refreshTokenController = async (req, res, next) => {
 
   try {
     const newRefreshToken = uuidv4();
+    const refreshTokenExpiry = new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)).toISOString();
 
     const body = {
       query: print(REPLACE_REFRESH_TOKEN),
@@ -154,7 +157,7 @@ export const refreshTokenController = async (req, res, next) => {
         oldRefreshToken: refreshToken,
         newRefreshTokenObject: {
           token: newRefreshToken,
-          expires_at: new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)), // convert from minute to milliseconds
+          expires_at: refreshTokenExpiry, // convert from minute to milliseconds
         },
       }
     }

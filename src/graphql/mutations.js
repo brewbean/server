@@ -6,7 +6,7 @@ export const INSERT_BARISTA = gql`
       id
       email
       verified
-      refetch_tokens {
+      refresh_tokens {
         token
         expires_at
         barista_id
