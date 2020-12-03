@@ -1,19 +1,30 @@
-export const GET_REFRESH_TOKEN_BY_ID = `
+import gql from 'graphql-tag';
+
+export const fragments = {
+  barista: gql`
+    fragment BaristaDetails on barista {
+      id
+      email
+      display_name
+      avatar
+      verified
+    }
+  `,
+}
+
+export const GET_REFRESH_TOKEN = gql`
   query ($refreshToken: uuid!) {
-    refresh_token(where: {token: {_eq: $refreshToken}}) {
+    refresh_token_by_pk(token: $refreshToken) {
       barista {
-        id
-        email
-        display_name
-        avatar
-        verified
+        ...BaristaDetails
       }
     }
   }
+  ${fragments.barista}
 `;
 
 // used just for verifying password
-export const GET_BARISTA_BY_EMAIL = `
+export const GET_BARISTA_CRED_BY_EMAIL = gql`
   query($email: String) {
     barista(where: {email: {_eq: $email}}) {
       id
