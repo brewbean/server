@@ -1,15 +1,13 @@
-export const INSERT_BARISTA = `
+import gql from 'graphql-tag';
+
+export const INSERT_BARISTA = gql`
   mutation ($object: barista_insert_input!) {
     insert_barista_one(object: $object) {
       id
       email
-      display_name
-      avatar
       verified
-      created_on
-      refetch_tokens {
+      refresh_tokens {
         token
-        id
         expires_at
         barista_id
       }
@@ -18,39 +16,32 @@ export const INSERT_BARISTA = `
 `;
 
 // barista data sent with login comes from here
-export const INSERT_REFRESH_TOKEN = `
+export const INSERT_REFRESH_TOKEN = gql`
   mutation ($object: refresh_token_insert_input!) {
     insert_refresh_token_one(object: $object) {
-      id
+      token
+      expires_at
+      created_at
+    }
+  }
+`;
+
+export const REPLACE_REFRESH_TOKEN = gql`
+  mutation ($oldRefreshToken: uuid!, $newRefreshTokenObject: refresh_token_set_input) {
+    update_refresh_token_by_pk(pk_columns: {token: $oldRefreshToken}, _set: $newRefreshTokenObject) {
       token
       expires_at
       created_at
       barista {
         id
         email
-        display_name
-        avatar
         verified
       }
     }
   }
 `;
 
-// delete current refresh token and generate a new, and insert the
-// new refresh_token in the database
-// two mutations as transaction
-export const REPLACE_REFRESH_TOKEN = `
-  mutation ($oldRefreshToken: uuid!, $newRefreshTokenObject: refresh_token_insert_input!, $baristaId: Int!) {
-    delete_refresh_token(where: {_and: [{token: {_eq: $oldRefreshToken}}, {barista_id: {_eq: $baristaId}}]}) {
-      affected_rows
-    }
-    insert_refresh_token_one(object: $newRefreshTokenObject) {
-      id
-    }
-  }
-`;
-
-export const DELETE_ALL_REFRESH_TOKENS = `
+export const DELETE_ALL_REFRESH_TOKENS = gql`
   mutation ($email: String!) {
     delete_refresh_token(where: {barista: {email: {_eq: $email}}}) {
       affected_rows
@@ -58,10 +49,12 @@ export const DELETE_ALL_REFRESH_TOKENS = `
   }
 `;
 
-export const DELETE_REFRESH_TOKEN = `
-  mutation ($refreshToken:uuid!) {
-    delete_refresh_token(where: {token: {_eq: $refreshToken}}) {
-      affected_rows
+export const DELETE_REFRESH_TOKEN = gql`
+  mutation ($refreshToken: uuid!) {
+    delete_refresh_token_by_pk(token: $refreshToken) {
+      token
+      created_at
+      barista_id
     }
   }
 `;

@@ -1,9 +1,11 @@
-import axios from 'axios'
-import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
-import boom from '@hapi/boom'
+import axios from 'axios';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import boom from '@hapi/boom';
+import graphql from 'graphql';
+const { print } = graphql;
 
-import { GET_BARISTA_BY_EMAIL } from '../graphql/queries.js';
+import { GET_BARISTA_CRED_BY_EMAIL } from '../graphql/queries.js';
 
 const { GRAPHQL_URL, JWT_SECRET, JWT_TOKEN_EXPIRES, HASURA_ADMIN_SECRET } = process.env;
 
@@ -18,7 +20,7 @@ export const validateCredentials = async (email, password) => {
   let valid;
 
   const body = {
-    query: GET_BARISTA_BY_EMAIL,
+    query: print(GET_BARISTA_CRED_BY_EMAIL),
     variables: { email }
   }
 
@@ -37,15 +39,15 @@ export const validateCredentials = async (email, password) => {
 
 }
 
-export const generateJWT = ({ id, email }) => {
+export const generateJWT = ({ id, email, verified }) => {
   const tokenContent = {
     sub: '' + id,
     email,
     iat: Date.now() / 1000,
     iss: "https://brewbean-api.herokuapp.com",
     "https://hasura.io/jwt/claims": {
-      "x-hasura-allowed-roles": ["barista"],
-      "x-hasura-default-role": "barista",
+      "x-hasura-allowed-roles": ["barista", "guest", "unverified"],
+      "x-hasura-default-role": verified ? "barista" : "unverified",
       "x-hasura-barista-id": '' + id
     }
   };
