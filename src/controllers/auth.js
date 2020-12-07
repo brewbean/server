@@ -21,7 +21,7 @@ export const signupController = async (req, res, next) => {
   const schema = joi.object().keys({
     email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
-    displayName: joi.string().required(),
+    displayName: joi.string().lowercase().required(),
   });
 
   const { error, value } = schema.validate(req.body);
