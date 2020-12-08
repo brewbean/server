@@ -21,7 +21,7 @@ export const signupController = async (req, res, next) => {
   const schema = joi.object().keys({
     email: joi.string().email().lowercase().required(),
     password: joi.string().required(),
-    displayName: joi.string().required(),
+    displayName: joi.string().lowercase().required(),
   });
 
   const { error, value } = schema.validate(req.body);
@@ -57,7 +57,7 @@ export const signupController = async (req, res, next) => {
     }
 
     const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-    
+
     if (data.errors) {
       const duplicateErrors = data.errors.filter(({ extensions: { code } }) => code === 'constraint-violation');
       const isDuplicateError = duplicateErrors.length > 0;
@@ -75,11 +75,7 @@ export const signupController = async (req, res, next) => {
       httpOnly: true,
       secure: false
     });
-    res.json({
-      token,
-      tokenExpiry,
-      refreshToken,
-    });
+    res.json({ token, tokenExpiry });
   } catch (e) {
     return next(boom.badImplementation('Unable to create user.'));
   }
@@ -110,7 +106,7 @@ export const loginController = async (req, res, next) => {
     const tokenExpiry = new Date(new Date().getTime() + (JWT_TOKEN_EXPIRES * 60 * 1000));
     const refreshToken = uuidv4();
     const refreshTokenExpiry = new Date(new Date().getTime() + (REFRESH_TOKEN_EXPIRES * 60 * 1000)).toISOString();
-    
+
     const body = {
       query: print(INSERT_REFRESH_TOKEN),
       variables: {
@@ -130,11 +126,7 @@ export const loginController = async (req, res, next) => {
       secure: false
     });
 
-    res.json({
-      token,
-      tokenExpiry,
-      refreshToken,
-    });
+    res.json({ token, tokenExpiry });
   } catch (e) {
     return next(boom.badImplementation("Could not update 'refresh token' for user"));
   }
@@ -177,12 +169,7 @@ export const refreshTokenController = async (req, res, next) => {
       secure: false
     });
 
-    res.json({
-      token,
-      tokenExpiry,
-      refreshToken: newRefreshToken,
-    });
-
+    res.json({ token, tokenExpiry });
   } catch (e) {
     return next(boom.unauthorized("Invalid 'refreshToken' or 'baristaId'"));
   }
