@@ -43,7 +43,6 @@ export const generateJWT = ({ id, email, verified }) => {
   const tokenContent = {
     sub: '' + id,
     email,
-    iat: Date.now() / 1000,
     iss: "https://brewbean-api.herokuapp.com",
     "https://hasura.io/jwt/claims": {
       "x-hasura-allowed-roles": ["barista", "guest", "unverified"],
