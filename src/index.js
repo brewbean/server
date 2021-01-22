@@ -1,26 +1,30 @@
-import express from 'express'
-import bodyParser from 'body-parser'
-import morgan from 'morgan'
-import cookieParser from 'cookie-parser'
-import cors from 'cors'
+import express from "express";
+import bodyParser from "body-parser";
+import morgan from "morgan";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 
-import auth from './routes/auth.js'
+import auth from "./routes/auth.js";
+import verify from "./routes/verify.js";
 
-const app = express()
-const PORT = process.env.PORT || 3000
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-app.disable('x-powered-by')
+app.disable("x-powered-by");
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
-app.use(cookieParser())
-app.use(morgan('tiny'))
-app.use(cors({
-  credentials: true,
-  origin: true
-}));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cookieParser());
+app.use(morgan("tiny"));
+app.use(
+  cors({
+    credentials: true,
+    origin: true,
+  })
+);
 
-app.use('/auth', auth)
+app.use("/auth", auth);
+app.use("/verify", verify);
 
 // error handler
 app.use((err, _req, res, _next) => {
@@ -32,5 +36,5 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`App 👂 at http://localhost:${PORT}`)
-})
+  console.log(`App 👂 at http://localhost:${PORT}`);
+});

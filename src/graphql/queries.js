@@ -7,7 +7,7 @@ export const fragments = {
       email
       display_name
       avatar
-      verified
+      is_verified
     }
   `,
 }
@@ -30,7 +30,31 @@ export const GET_BARISTA_CRED_BY_EMAIL = gql`
       id
       email
       password
-      verified
+      is_verified
+    }
+  }
+`;
+
+// used for email verification
+export const GET_BARISTA_VERIFICATION_CODE = gql`
+  query($email: String!) {
+    barista(where: { email: { _eq: $email } }) {
+      id
+      is_verified
+      verification_code {
+        code
+        expires_at
+      }
+    }
+  }
+`;
+
+// used for resending email
+export const GET_BARISTA_IS_VERIFIED = gql`
+  query($email: String!) {
+    barista(where: { email: { _eq: $email } }) {
+      id
+      is_verified
     }
   }
 `;
