@@ -20,7 +20,7 @@ const { GRAPHQL_URL, VERIFICATION_CODE_EXPIRES } = process.env;
 export const validationController = async (req, res, next) => {
   const schema = joi.object().keys({
     email: joi.string().email().lowercase().required(),
-    verificationCode: joi.string().guid().required(),
+    code: joi.string().guid().required(),
   });
 
   const { error, value } = schema.validate(req.body);
@@ -29,7 +29,7 @@ export const validationController = async (req, res, next) => {
     return next(boom.badRequest(error.details[0].message));
   }
 
-  const { email, verificationCode } = value;
+  const { email, code } = value;
 
   try {
     const { data } = await axios.post(
@@ -48,9 +48,13 @@ export const validationController = async (req, res, next) => {
     if (barista.is_verified)
       return next(boom.resourceGone("barista already verified"));
 
-    const { code, expires_at } = barista.verification_code;
+    const { code: refCode, expires_at } = barista.verification_code;
 
-    if (verificationCode === code && new Date(expires_at) > new Date()) {
+    if (code !== refCode) {
+      return next(boom.badRequest("Verification code invalid"));
+    }
+
+    if (new Date(expires_at) > new Date()) {
       await axios.post(
         GRAPHQL_URL,
         {
@@ -62,7 +66,7 @@ export const validationController = async (req, res, next) => {
 
       res.send("OK");
     } else {
-      return next(boom.resourceGone("Verification code expired or invalid"));
+      return next(boom.resourceGone("Verification code expired"));
     }
   } catch (e) {
     return next(boom.badRequest("Error validating email"));
