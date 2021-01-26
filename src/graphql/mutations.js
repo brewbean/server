@@ -30,27 +30,6 @@ export const INSERT_REFRESH_TOKEN = gql`
   }
 `;
 
-export const REPLACE_REFRESH_TOKEN = gql`
-  mutation(
-    $oldRefreshToken: uuid!
-    $newRefreshTokenObject: refresh_token_set_input
-  ) {
-    update_refresh_token_by_pk(
-      pk_columns: { token: $oldRefreshToken }
-      _set: $newRefreshTokenObject
-    ) {
-      token
-      expires_at
-      created_at
-      barista {
-        id
-        email
-        is_verified
-      }
-    }
-  }
-`;
-
 export const DELETE_ALL_REFRESH_TOKENS = gql`
   mutation($email: String!) {
     delete_refresh_token(where: { barista: { email: { _eq: $email } } }) {
