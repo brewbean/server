@@ -15,6 +15,7 @@ export const fragments = {
 export const GET_REFRESH_TOKEN = gql`
   query ($refreshToken: uuid!) {
     refresh_token_by_pk(token: $refreshToken) {
+      expires_at
       barista {
         ...BaristaDetails
       }

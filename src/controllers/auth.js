@@ -10,15 +10,14 @@ import { sendConfirmation } from "../helpers/verify.js";
 import {
   validateCredentials,
   generateJWT,
-  generateGuestJWT,
   getDuplicateError,
 } from "../helpers/auth.js";
+import { GET_REFRESH_TOKEN } from "../graphql/queries.js";
 import {
   DELETE_ALL_REFRESH_TOKENS,
   DELETE_REFRESH_TOKEN,
   INSERT_BARISTA,
   INSERT_REFRESH_TOKEN,
-  REPLACE_REFRESH_TOKEN,
 } from "../graphql/mutations.js";
 const { print } = graphql;
 
@@ -80,7 +79,7 @@ export const signupController = async (req, res, next) => {
     };
 
     const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-    
+
     if (data.errors) {
       const duplicateErrors = data.errors.filter(
         ({ extensions: { code } }) => code === "constraint-violation"
@@ -179,38 +178,29 @@ export const refreshTokenController = async (req, res, next) => {
   }
 
   try {
-    const newRefreshToken = uuidv4();
-    const refreshTokenExpiry = new Date(
-      new Date().getTime() + REFRESH_TOKEN_EXPIRES * 60 * 1000
-    ).toISOString();
-
-    const body = {
-      query: print(REPLACE_REFRESH_TOKEN),
-      variables: {
-        oldRefreshToken: refreshToken,
-        newRefreshTokenObject: {
-          token: newRefreshToken,
-          expires_at: refreshTokenExpiry, // convert from minute to milliseconds
-        },
+    const { data } = await axios.post(
+      GRAPHQL_URL,
+      {
+        query: print(GET_REFRESH_TOKEN),
+        variables: { refreshToken },
       },
-    };
-    const { data } = await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
-    const barista = data.data.update_refresh_token_by_pk?.barista;
+      HASURA_ADMIN_HEADERS
+    );
 
-    if (!barista) {
+    if (!data.data.refresh_token_by_pk) {
       return next(boom.unauthorized("invalid refresh token"));
+    }
+
+    const { barista, expires_at } = data.data.refresh_token_by_pk;
+
+    if (new Date() > new Date(expires_at)) {
+      return next(boom.unauthorized("expired refresh token"));
     }
 
     const token = generateJWT(barista);
     const tokenExpiry = new Date(
       new Date().getTime() + JWT_TOKEN_EXPIRES * 60 * 1000
     );
-
-    res.cookie("refreshToken", newRefreshToken, {
-      maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-      httpOnly: true,
-      secure: false,
-    });
 
     res.json({ token, tokenExpiry });
   } catch (e) {
@@ -285,12 +275,4 @@ export const logoutAllController = async (req, res, next) => {
 
   // will send OK even if an invalid email sent (DESIRED? @James @William)
   res.send("OK");
-};
-
-// DEPRECATED
-export const guestController = async (req, res, next) => {
-  const token = generateGuestJWT();
-  res.json({
-    token,
-  });
 };
