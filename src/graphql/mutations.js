@@ -75,3 +75,17 @@ export const REPLACE_VERIFICATION_CODE = gql`
     }
   }
 `;
+
+export const CHANGE_PASSWORD = gql`
+  mutation($id: Int!, $input: barista_set_input, $token: uuid!) {
+    update_barista_by_pk(pk_columns: { id: $id }, _set: $input) {
+      id
+      password
+    }
+    delete_refresh_token(
+      where: { _and: { barista_id: { _eq: $id }, token: { _neq: $token } } }
+    ) {
+      affected_rows
+    }
+  }
+`;
