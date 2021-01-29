@@ -29,8 +29,8 @@ app.use("/verify", verify);
 // error handler
 app.use((err, _req, res, _next) => {
   if (err) {
-    console.error(err.message);
-    console.error(err.stack);
+    console.error("\x1b[41m%s\x1b[0m", err.message);
+    console.error("\x1b[35m%s\x1b[0m", err.stack);
     return res.status(err.output.statusCode || 500).json(err.output.payload);
   }
 });
