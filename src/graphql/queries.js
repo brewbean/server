@@ -1,4 +1,4 @@
-import gql from 'graphql-tag';
+import gql from "graphql-tag";
 
 export const fragments = {
   barista: gql`
@@ -10,10 +10,10 @@ export const fragments = {
       is_verified
     }
   `,
-}
+};
 
 export const GET_REFRESH_TOKEN = gql`
-  query ($refreshToken: uuid!) {
+  query($refreshToken: uuid!) {
     refresh_token_by_pk(token: $refreshToken) {
       expires_at
       barista {
@@ -27,7 +27,7 @@ export const GET_REFRESH_TOKEN = gql`
 // used just for verifying password
 export const GET_BARISTA_CRED_BY_EMAIL = gql`
   query($email: String) {
-    barista(where: {email: {_eq: $email}}) {
+    barista(where: { email: { _eq: $email } }) {
       id
       email
       password
@@ -56,6 +56,20 @@ export const GET_BARISTA_IS_VERIFIED = gql`
     barista(where: { email: { _eq: $email } }) {
       id
       is_verified
+    }
+  }
+`;
+
+// used for password reset
+export const GET_BARISTA_PASSWORD_RESET_CODE = gql`
+  query($email: String!) {
+    barista(where: { email: { _eq: $email } }) {
+      id
+      is_verified
+      password_reset_code {
+        code
+        expires_at
+      }
     }
   }
 `;

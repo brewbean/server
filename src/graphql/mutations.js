@@ -76,6 +76,40 @@ export const REPLACE_VERIFICATION_CODE = gql`
   }
 `;
 
+const deletePasswordResetFragment = gql`
+  fragment DeletePasswordResetFragment on mutation_root {
+    delete_password_reset_code(where: { barista_id: { _eq: $barista_id } }) {
+      affected_rows
+    }
+  }
+`;
+
+const insertPasswordResetFragment = gql`
+  fragment InsertPasswordResetFragment on mutation_root {
+    insert_password_reset_code_one(
+      object: { expires_at: $expires_at, barista_id: $barista_id }
+    ) {
+      barista_id
+      code
+    }
+  }
+`;
+
+// delete all refresh token since they forgot their password everywhere
+const changePasswordFragment = gql`
+  fragment ChangePasswordFragment on mutation_root {
+    update_barista_by_pk(pk_columns: { id: $barista_id }, _set: $input) {
+      id
+      password
+    }
+    delete_refresh_token(where: { barista_id: { _eq: $barista_id } }) {
+      affected_rows
+    }
+  }
+`;
+
+// keeps a refresh token valid because you are logged in
+// and changing password
 export const CHANGE_PASSWORD = gql`
   mutation($id: Int!, $input: barista_set_input, $token: uuid!) {
     update_barista_by_pk(pk_columns: { id: $id }, _set: $input) {
@@ -89,3 +123,23 @@ export const CHANGE_PASSWORD = gql`
     }
   }
 `;
+
+const ADD_PASSWORD_REFRESH_CODE = gql`
+  mutation($barista_id: Int!, $expires_at: timestamptz!) {
+    ...DeletePasswordResetFragment
+    ...InsertPasswordResetFragment
+  }
+  ${deletePasswordResetFragment}
+  ${insertPasswordResetFragment}
+`;
+
+const CHANGE_PASSWORD_BY_RESET = gql`
+  mutation($barista_id: Int!, $input: barista_set_input) {
+    ...DeletePasswordResetFragment
+    ...ChangePasswordFragment
+  }
+  ${deletePasswordResetFragment}
+  ${changePasswordFragment}
+`;
+
+export { ADD_PASSWORD_REFRESH_CODE, CHANGE_PASSWORD_BY_RESET };

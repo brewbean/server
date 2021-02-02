@@ -5,8 +5,8 @@ import {
   refreshTokenController,
   logoutController,
   logoutAllController,
-  changePasswordController,
 } from "../controllers/auth.js";
+import PasswordRouter from "./password.js";
 
 const router = express.Router();
 
@@ -15,6 +15,7 @@ router.post("/login", loginController);
 router.post("/refresh-token", refreshTokenController);
 router.post("/logout", logoutController);
 router.post("/logout-all", logoutAllController);
-router.put("/change-password", changePasswordController);
+
+router.use("/password", PasswordRouter);
 
 export default router;
