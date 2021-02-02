@@ -6,7 +6,7 @@ import boom from "@hapi/boom";
 import graphql from "graphql";
 import { v4 as uuidv4 } from "uuid";
 import { HASURA_ADMIN_HEADERS } from "../config.js";
-import { sendConfirmation } from "../helpers/verify.js";
+import { sendConfirmation } from "../helpers/email.js";
 import {
   validateCredentials,
   generateJWT,
@@ -14,7 +14,6 @@ import {
 } from "../helpers/auth.js";
 import { GET_REFRESH_TOKEN } from "../graphql/queries.js";
 import {
-  CHANGE_PASSWORD,
   DELETE_ALL_REFRESH_TOKENS,
   DELETE_REFRESH_TOKEN,
   INSERT_BARISTA,
@@ -206,58 +205,6 @@ export const refreshTokenController = async (req, res, next) => {
     res.json({ token, tokenExpiry });
   } catch (e) {
     return next(boom.unauthorized("Invalid 'refreshToken' or 'baristaId'"));
-  }
-};
-
-export const changePasswordController = async (req, res, next) => {
-  const schema = joi.object().keys({
-    email: joi.string().email().lowercase().required(),
-    currentPassword: joi.string().required(),
-    newPassword: joi.string().required(),
-    refreshToken: joi.string().guid({ version: "uuidv4" }).required(),
-  });
-
-  const { error, value } = schema.validate({
-    ...req.body,
-    refreshToken: req.cookies["refreshToken"],
-  });
-
-  if (error) {
-    return next(boom.badRequest(error.details[0].message));
-  }
-
-  const { email, currentPassword, newPassword, refreshToken } = value;
-
-  if (currentPassword === newPassword) {
-    return next(boom.badRequest("New password same as current password"));
-  }
-
-  try {
-    const {
-      error: credentialError,
-      valid,
-      barista,
-    } = await validateCredentials(email, currentPassword);
-
-    if (!valid) return next(credentialError);
-
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-
-    await axios.post(
-      GRAPHQL_URL,
-      {
-        query: print(CHANGE_PASSWORD),
-        variables: {
-          id: barista.id,
-          input: { password: passwordHash },
-          token: refreshToken,
-        },
-      },
-      HASURA_ADMIN_HEADERS
-    );
-    res.send("OK");
-  } catch (e) {
-    return next(boom.badImplementation("Unable to change password."));
   }
 };
 

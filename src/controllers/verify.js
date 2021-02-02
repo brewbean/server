@@ -5,7 +5,7 @@ import { HASURA_ADMIN_HEADERS } from "../config.js";
 import graphql from "graphql";
 const { print } = graphql;
 
-import { sendConfirmation } from "../helpers/verify.js";
+import { sendConfirmation } from "../helpers/email.js";
 import {
   GET_BARISTA_VERIFICATION_CODE,
   GET_BARISTA_IS_VERIFIED,
