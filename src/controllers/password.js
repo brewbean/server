@@ -97,7 +97,7 @@ export const forgotPasswordController = async (req, res, next) => {
     // so bad actors can't use this endpoint to find user emails
     // if a user isn't verified they shouldn't be able to reset
     if (!barista || !barista.is_verified) {
-      return next(boom.badRequest("User is unable to reset password"));
+      return next(boom.unauthorized("User is unable to reset password"));
     }
 
     const passwordResetExpiry = new Date(
@@ -126,7 +126,7 @@ export const resetPasswordController = async (req, res, next) => {
   const schema = joi.object().keys({
     email: joi.string().email().lowercase().required(),
     code: joi.string().guid({ version: "uuidv4" }).required(),
-    newPassword: joi.string().required(),
+    password: joi.string().required(),
   });
 
   const { error, value } = schema.validate(req.body);
@@ -135,7 +135,7 @@ export const resetPasswordController = async (req, res, next) => {
     return next(boom.badRequest(error.details[0].message));
   }
 
-  const { email, code, newPassword } = value;
+  const { email, code, password } = value;
 
   // change password
   try {
@@ -156,10 +156,10 @@ export const resetPasswordController = async (req, res, next) => {
     const { password_reset_code } = barista;
 
     if (new Date() > new Date(password_reset_code.expires_at)) {
-      return next(boom.unauthorized("expired reset code token"));
+      return next(boom.unauthorized("Expired reset code"));
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     await axios.post(
       GRAPHQL_URL,
@@ -177,6 +177,6 @@ export const resetPasswordController = async (req, res, next) => {
     
     res.send("OK");
   } catch (e) {
-    return next(boom.badRequest("Error reseting password"));
+    return next(boom.badRequest("Error resetting password"));
   }
 };
