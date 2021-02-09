@@ -53,8 +53,8 @@ export const generateJWT = ({ id, email, is_verified }) => {
     iss: "https://brewbean-api.herokuapp.com",
     "https://hasura.io/jwt/claims": {
       "x-hasura-allowed-roles": is_verified
-        ? ["barista", "guest"]
-        : ["guest", "unverified"],
+        ? ["barista", "all_barista"]
+        : ["all_barista", "unverified"],
       "x-hasura-default-role": is_verified ? "barista" : "unverified",
       "x-hasura-barista-id": "" + id,
     },
