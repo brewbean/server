@@ -227,7 +227,7 @@ export const logoutController = async (req, res, next) => {
     }
   }
 
-  res.cookie("refresh_token", "", {
+  res.cookie("refreshToken", "", {
     httpOnly: true,
     expires: new Date(0),
   });
