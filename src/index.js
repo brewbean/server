@@ -3,26 +3,42 @@ import bodyParser from "body-parser";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 import auth from "./routes/auth.js";
 import verify from "./routes/verify.js";
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const { DOMAIN, PORT, RATE_LIMITER_MINUTES, RATE_LIMITER_MAX } = process.env;
 
-app.disable("x-powered-by");
+const app = express();
+
+const whitelist = [DOMAIN];
+const corsOptions = {
+  credentials: true,
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+};
+const limiter = rateLimit({
+  windowMs: RATE_LIMITER_MINUTES * 60 * 1000, // 15 minutes
+  max: RATE_LIMITER_MAX, // limit each IP to 100 requests per windowMs
+});
+
+app.set("trust proxy", 1);
+app.use(helmet());
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(morgan("tiny"));
-app.use(
-  cors({
-    credentials: true,
-    origin: true,
-  })
-);
+app.use(cors(corsOptions));
 
+app.use(limiter);
 app.use("/auth", auth);
 app.use("/verify", verify);
 
@@ -35,6 +51,6 @@ app.use((err, _req, res, _next) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`App 👂 at http://localhost:${PORT}`);
+app.listen(PORT || 4000, () => {
+  console.log(`App 👂 at http://localhost:${PORT || 4000}`);
 });

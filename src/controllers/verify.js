@@ -118,7 +118,7 @@ export const resendController = async (req, res, next) => {
       },
       HASURA_ADMIN_HEADERS
     );
-    
+
     const { code } = verifyData.data.insert_verification_code_one;
     await sendConfirmation(email, code);
 

@@ -29,6 +29,13 @@ const {
   VERIFICATION_CODE_EXPIRES,
 } = process.env;
 
+const cookieOptions = {
+  maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: true,
+};
+
 export const signupController = async (req, res, next) => {
   const schema = joi.object().keys({
     email: joi.string().email().lowercase().required(),
@@ -98,11 +105,7 @@ export const signupController = async (req, res, next) => {
 
     await sendConfirmation(barista.email, code);
 
-    res.cookie("refreshToken", refreshToken, {
-      maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-      httpOnly: true,
-      secure: false,
-    });
+    res.cookie("refreshToken", refreshToken, cookieOptions);
     res.json({ token, tokenExpiry });
   } catch (e) {
     return next(boom.badImplementation("Unable to create user."));
@@ -156,11 +159,7 @@ export const loginController = async (req, res, next) => {
 
     await axios.post(GRAPHQL_URL, body, HASURA_ADMIN_HEADERS);
 
-    res.cookie("refreshToken", refreshToken, {
-      maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
-      httpOnly: true,
-      secure: false,
-    });
+    res.cookie("refreshToken", refreshToken, cookieOptions);
 
     res.json({ token, tokenExpiry });
   } catch (e) {
@@ -230,6 +229,8 @@ export const logoutController = async (req, res, next) => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
     expires: new Date(0),
+    secure: secureCookie,
+    sameSite: true,
   });
   res.send("OK");
 };
