@@ -7,6 +7,7 @@ import {
   logoutAllController,
 } from "../controllers/auth.js";
 import PasswordRouter from "./password.js";
+import rateLimit from "express-rate-limit";
 const { AUTH_RATE_LIMITER_MINUTES, AUTH_RATE_LIMIT_MAX } = process.env;
 
 const router = express.Router();
