@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import boom from "@hapi/boom";
 
 import auth from "./routes/auth.js";
 import verify from "./routes/verify.js";
@@ -20,7 +21,7 @@ const corsOptions = {
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(boom.unauthorized("Not allowed by CORS"));
     }
   },
 };
