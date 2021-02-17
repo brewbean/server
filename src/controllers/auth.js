@@ -35,7 +35,7 @@ const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: true,
-  domain: DOMAIN.split("//")[1],
+  domain: DOMAIN,
 };
 
 export const signupController = async (req, res, next) => {
