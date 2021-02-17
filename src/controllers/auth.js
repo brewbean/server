@@ -27,6 +27,7 @@ const {
   JWT_TOKEN_EXPIRES,
   REFRESH_TOKEN_EXPIRES,
   VERIFICATION_CODE_EXPIRES,
+  DOMAIN,
 } = process.env;
 
 const cookieOptions = {
@@ -34,6 +35,7 @@ const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: true,
+  domain: DOMAIN.split("//")[1],
 };
 
 export const signupController = async (req, res, next) => {
