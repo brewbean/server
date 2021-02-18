@@ -231,7 +231,7 @@ export const logoutController = async (req, res, next) => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
     expires: new Date(0),
-    secure: secureCookie,
+    secure: cookieOptions.secure,
     sameSite: true,
   });
   res.send("OK");
