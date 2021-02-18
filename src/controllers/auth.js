@@ -27,14 +27,19 @@ const {
   JWT_TOKEN_EXPIRES,
   REFRESH_TOKEN_EXPIRES,
   VERIFICATION_CODE_EXPIRES,
+  DOMAIN,
 } = process.env;
 
-const cookieOptions = {
+let cookieOptions = {
   maxAge: REFRESH_TOKEN_EXPIRES * 60 * 1000, // convert from minute to milliseconds
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
   sameSite: true,
 };
+
+if (process.env.NODE_ENV === "production") {
+  cookieOptions.secure = true;
+  cookieOptions.domain = DOMAIN.split("//")[1];
+}
 
 export const signupController = async (req, res, next) => {
   const schema = joi.object().keys({
