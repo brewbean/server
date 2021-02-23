@@ -2,7 +2,7 @@ import axios from "axios";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import boom from "@hapi/boom";
-import graphql from "graphql";
+import * as graphql from "graphql";
 const { print } = graphql;
 
 import { GET_BARISTA_CRED_BY_EMAIL } from "../graphql/queries.js";
