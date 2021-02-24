@@ -7,6 +7,7 @@
 
 # testing
 /coverage
+setEnv.test.js
 
 # production
 /build

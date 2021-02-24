@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "jest",
+    "test-watch": "jest --watch",
     "start": "node --harmony-top-level-await src/index.js ",
     "dev": "nodemon -r dotenv/config --trace-warnings --harmony-top-level-await src/index.js"
   },
