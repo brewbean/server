@@ -1,7 +1,13 @@
-import getDuplicateError, { validateCredentials } from "../../helpers/auth";
+import {
+  validateCredentials,
+  generateJWT,
+  getDuplicateError,
+} from "../../helpers/auth";
 import bcrypt from "bcrypt";
 import axios from "axios";
 import boom from "@hapi/boom";
+import jwt from "jsonwebtoken";
+
 jest.mock("axios");
 // test('Check if email already exists', () => {
 //   let error = "Something barista_email_key";
@@ -17,7 +23,7 @@ describe("[Validate Credentials Tests]", () => {
     const expected = {
       valid: true,
       barista: {
-        id: 2,
+        id: 1,
         email: "jest-test@test.com",
         password: encryptedPassword,
       },
@@ -27,7 +33,7 @@ describe("[Validate Credentials Tests]", () => {
         data: {
           barista: [
             {
-              id: 2,
+              id: 1,
               email: "jest-test@test.com",
               password: encryptedPassword,
             },
@@ -42,13 +48,12 @@ describe("[Validate Credentials Tests]", () => {
   test("Returns invalid username or password error if no barista found", async () => {
     const expected = {
       valid: false,
-      error: boom.unauthorized("Invalid 'username' or 'password'")
+      error: boom.unauthorized("Invalid 'username' or 'password'"),
     };
     axios.post.mockResolvedValue({
       data: {
         data: {
-          barista: [
-          ],
+          barista: [],
         },
       },
     });
@@ -59,20 +64,90 @@ describe("[Validate Credentials Tests]", () => {
   test("Returns invalid username or password error if barista found but different password", async () => {
     const expected = {
       valid: false,
-      error: boom.unauthorized("Invalid 'username' or 'password'")
+      error: boom.unauthorized("Invalid 'username' or 'password'"),
     };
     axios.post.mockResolvedValue({
       data: {
         data: {
-          barista: [{
-            id: 2,
-            email: "jest-test@test.com",
-            password: "123",
-          }],
+          barista: [
+            {
+              id: 1,
+              email: "jest-test@test.com",
+              password: "123",
+            },
+          ],
         },
       },
     });
     const data = await validateCredentials(email, password);
     expect(data).toEqual(expected);
+  });
+});
+
+// describe("[Generate JWT Tests]", () => {
+//   const id = 1;
+//   const email = "jest-test@test.com";
+//   const JWT_SECRET = "1";
+//   const JWT_TOKEN_EXPIRES = "1";
+
+//   test("JWT created with verified account", async () => {
+//     const tokenContent = {
+//       sub: "1",
+//       email,
+//       iss: "https://brewbean-api.herokuapp.com",
+//       "https://hasura.io/jwt/claims": {
+//         "x-hasura-allowed-roles": ["barista", "all_barista"],
+//         "x-hasura-default-role": "barista",
+//         "x-hasura-barista-id": "1",
+//       },
+//     };
+
+//     const expected = jwt.sign(tokenContent, JWT_SECRET, {
+//       expiresIn: `${JWT_TOKEN_EXPIRES}m`,
+//     });
+//     const result = await generateJWT(id, email, true);
+//     expect(result).toEqual(expected);
+//   });
+
+//   test("JWT created with unverified account", async () => {
+//     const tokenContent = {
+//       sub: "1",
+//       email,
+//       iss: "https://brewbean-api.herokuapp.com",
+//       "https://hasura.io/jwt/claims": {
+//         "x-hasura-allowed-roles": ["all_barista", "unverified"],
+//         "x-hasura-default-role": "unverified",
+//         "x-hasura-barista-id": "1",
+//       },
+//     };
+
+//     const expected = jwt.sign(tokenContent, JWT_SECRET, {
+//       expiresIn: `${JWT_TOKEN_EXPIRES}m`,
+//     });
+//     const result = await generateJWT(id, email, false);
+//     expect(result).toEqual(expected);
+//   });
+// });
+
+describe("[Get Duplicate Error]", () => {
+  test("Email already exists", () => {
+    const errors = [{ message: "barista_email_key already exists" }];
+    const expected = boom.badRequest("Email already exists");
+    const result = getDuplicateError(errors);
+    expect(result).toEqual(expected);
+  });
+
+  test("Display name already exists", () => {
+    const errors = [{ message: "barista_display_name_key already exists" }];
+    const expected = boom.badRequest("Display name already exists");
+    const result = getDuplicateError(errors);
+    expect(result).toEqual(expected);
+  });
+
+  test("Nothing is returned if no error", () => {
+    const errors = [{}];
+    const result = getDuplicateError(errors);
+    const expected = "";
+    expect(result).toEqual(expected);
   });
 });
