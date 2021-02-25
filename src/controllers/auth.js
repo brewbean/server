@@ -169,7 +169,7 @@ export const loginController = async (req, res, next) => {
     res.json({ token, tokenExpiry });
   } catch (e) {
     return next(
-      boom.badImplementation("Could not update 'refresh token' for user")
+      boom.badImplementation("Error logging in")
     );
   }
 };
