@@ -1,12 +1,12 @@
 import {
   validateCredentials,
-  generateJWT,
   getDuplicateError,
 } from "../../helpers/auth";
 import bcrypt from "bcrypt";
 import axios from "axios";
 import boom from "@hapi/boom";
 import jwt from "jsonwebtoken";
+// import { logoutController, signupController } from "../../controllers/auth";
 
 jest.mock("axios");
 // test('Check if email already exists', () => {
@@ -21,7 +21,7 @@ describe("[Validate Credentials Tests]", () => {
   test("Returns valid if barista email and password match", async () => {
     const encryptedPassword = await bcrypt.hash(password, 10);
     const expected = {
-      valid: true,
+      valid: true, 
       barista: {
         id: 1,
         email: "jest-test@test.com",
@@ -134,7 +134,9 @@ describe("[Get Duplicate Error]", () => {
     const errors = [{ message: "barista_email_key already exists" }];
     const expected = boom.badRequest("Email already exists");
     const result = getDuplicateError(errors);
+
     expect(result).toEqual(expected);
+    
   });
 
   test("Display name already exists", () => {
@@ -151,3 +153,60 @@ describe("[Get Duplicate Error]", () => {
     expect(result).toEqual(expected);
   });
 });
+
+
+
+
+
+
+
+
+
+describe("", () => {
+  test("", () => {
+    let result
+    let next = error => { // handing in a function for next 
+       result = error 
+    }
+    let jsonResult
+    let res = {
+      json: (xyz) => {
+        jsonResult = xyz
+      }
+    }
+    signupController(req, res, next)
+    expect(jsonResult).toBe("??")
+    expect(result).toBe(boom.unauthorized(""))
+  })
+})
+
+tes("", () =>{
+  // 1. don't have refresh token 
+  //  - 
+  let reqFail = {
+    cookies: {
+    }
+  }
+  let reqRefreshToke = {
+    cookies: {
+      refreshToken: "yes"
+    }
+  }
+  axios.post.mockResolvedValue({
+    // whatever fake values w/ whatever property 
+  })
+  // need to spy into cookies
+  // need to read on spy helper 
+
+  let res = {
+    // a="refreshtoken"
+    // b=''
+    // c=object
+    cookie: (a,b,c) => {
+
+    },
+    send: () => "OK" // just need to check it gets called (jest thing)
+  }
+  logoutController(req,res,next)
+  
+})
