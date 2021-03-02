@@ -3,7 +3,7 @@ import axios from "axios";
 import joi from "joi";
 import jwt from "jsonwebtoken";
 import boom from "@hapi/boom";
-import graphql from "graphql";
+import * as graphql from "graphql";
 import { v4 as uuidv4 } from "uuid";
 import { HASURA_ADMIN_HEADERS } from "../config.js";
 import { sendConfirmation } from "../helpers/email.js";
