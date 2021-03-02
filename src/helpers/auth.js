@@ -9,6 +9,7 @@ import { GET_BARISTA_CRED_BY_EMAIL } from "../graphql/queries.js";
 
 const {
   GRAPHQL_URL,
+  GRAPHQL_BASE,
   JWT_SECRET,
   JWT_TOKEN_EXPIRES,
   HASURA_ADMIN_SECRET,
@@ -50,7 +51,7 @@ export const generateJWT = ({ id, email, is_verified }) => {
   const tokenContent = {
     sub: "" + id,
     email,
-    iss: "https://brewbean-api.herokuapp.com",
+    iss: GRAPHQL_BASE,
     "https://hasura.io/jwt/claims": {
       "x-hasura-allowed-roles": is_verified
         ? ["barista", "all_barista"]
