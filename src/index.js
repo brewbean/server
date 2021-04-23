@@ -1,5 +1,4 @@
 import express from "express";
-import bodyParser from "body-parser";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -33,8 +32,8 @@ const limiter = rateLimit({
 app.set("trust proxy", 1);
 app.use(helmet());
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("tiny"));
 app.use(cors(corsOptions));
