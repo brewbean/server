@@ -38,7 +38,11 @@ let cookieOptions = {
 
 if (process.env.NODE_ENV === "production") {
   cookieOptions.secure = true;
-  cookieOptions.domain = DOMAIN.split("//")[1];
+  let domain = DOMAIN.split("//")[1];
+  if (domain.split(".").length > 2) {
+    domain = domain.split(".").slice(-2).join(".");
+  }
+  cookieOptions.domain = domain;
 }
 
 export const signupController = async (req, res, next) => {
