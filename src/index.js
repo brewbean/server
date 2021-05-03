@@ -8,6 +8,7 @@ import boom from "@hapi/boom";
 
 import auth from "./routes/auth.js";
 import verify from "./routes/verify.js";
+import hooks from "./routes/hooks.js";
 
 const { DOMAIN, PORT, RATE_LIMITER_MINUTES, RATE_LIMITER_MAX } = process.env;
 
@@ -41,6 +42,7 @@ app.use(cors(corsOptions));
 app.use(limiter);
 app.use("/auth", auth);
 app.use("/verify", verify);
+app.use("/hooks", hooks);
 
 // error handler
 app.use((err, _req, res, _next) => {
